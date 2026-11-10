@@ -1,5 +1,5 @@
-grub-btrfs (0~git20260824.38cd2fa-1) unstable; urgency=medium
+grub-btrfs (0~git-1) unstable; urgency=medium
 
-  * Initial Debian packaging.
+  * Rolling package built from git; debian/rules sets the real version.
 
  -- maulusck <maulusck@users.noreply.github.com>  Tue, 10 Nov 2026 12:00:00 +0000
