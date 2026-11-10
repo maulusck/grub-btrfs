@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends debhelper fakeroot lintian btrfs-progs
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends build-essential debhelper fakeroot lintian btrfs-progs
       - run: sudo debian/tests/restore
       - run: dpkg-buildpackage -b -us -uc && mv ../grub-btrfs_*.deb .
       - run: lintian --fail-on error grub-btrfs_*.deb
