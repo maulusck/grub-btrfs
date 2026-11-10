@@ -1,0 +1,29 @@
+#!/bin/sh
+# Self-check for grub-btrfs-restore on a throwaway loop filesystem. Run as root.
+set -eu
+t=$(mktemp -d); img=$t/img; mnt=$t/mnt; bin=$t/bin
+mkdir "$mnt" "$bin"
+truncate -s 200M "$img"; mkfs.btrfs -q "$img"
+mount -o loop "$img" "$mnt"
+trap 'umount "$mnt"; rm -rf "$t"' EXIT
+btrfs -q subvolume create "$mnt/@rootfs"
+btrfs -q subvolume create "$mnt/@rootfs/.snapshots"
+echo good > "$mnt/@rootfs/state"
+mkdir "$mnt/@rootfs/.snapshots/1"
+btrfs -q subvolume snapshot -r "$mnt/@rootfs" "$mnt/@rootfs/.snapshots/1/snapshot"
+echo broken > "$mnt/@rootfs/state"
+
+# Stand in for the two questions the script asks about "/".
+dev=$(findmnt -nvo SOURCE "$mnt")
+cat > "$bin/findmnt" <<SH
+#!/bin/sh
+case \$1 in -nvo) echo $dev ;; -sno) echo defaults,subvol=/@rootfs ;; esac
+SH
+chmod +x "$bin/findmnt"
+
+PATH=$bin:$PATH "$(dirname "$0")/../grub-btrfs-restore" 1
+[ "$(cat "$mnt/@rootfs/state")" = good ]
+[ -d "$mnt/@rootfs/.snapshots/1/snapshot" ]
+[ "$(cat "$mnt"/@rootfs.old-*/state)" = broken ]
+touch "$mnt/@rootfs/writable"
+echo PASS

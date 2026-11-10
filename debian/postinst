@@ -1,0 +1,18 @@
+#!/bin/sh
+set -e
+if [ "$1" = configure ]; then
+    # A snapper config named "root" is what arms snapper's apt hook (80snapper).
+    if [ ! -e /etc/snapper/configs/root ] && [ "$(findmnt -no FSTYPE /)" = btrfs ]; then
+        # Only on first creation, so later admin edits are never overwritten.
+        # Timeline off: apt snapshots only, no hourly snapshot + GRUB rewrite.
+        snapper --no-dbus -c root create-config / &&
+            snapper --no-dbus -c root set-config TIMELINE_CREATE=no NUMBER_LIMIT=10 ||
+            echo "grub-btrfs: could not create the snapper root config, see grub-btrfs-restore(8)" >&2
+    fi
+fi
+
+#DEBHELPER#
+
+if [ "$1" = configure ] && [ -e /boot/grub/grub.cfg ]; then
+    update-grub || true
+fi

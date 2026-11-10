@@ -1,0 +1,32 @@
+name: deb
+on:
+  push:
+    tags: ['debian/*']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  deb:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends debhelper fakeroot lintian btrfs-progs
+      - run: sudo debian/tests/restore
+      - run: dpkg-buildpackage -b -us -uc && mv ../grub-btrfs_*.deb .
+      - run: lintian --fail-on error grub-btrfs_*.deb
+      - name: install, upgrade and purge on trixie
+        run: >
+          docker run --rm -v "$PWD:/w" debian:trixie sh -ec
+          'apt-get update -qq; apt-get install -y /w/grub-btrfs_*.deb;
+          apt-get install -y --reinstall /w/grub-btrfs_*.deb;
+          man -w grub-btrfs grub-btrfsd grub-btrfs-restore || ls /usr/share/man/man8/grub-btrfs*;
+          apt-get purge -y grub-btrfs'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: deb
+          path: grub-btrfs_*.deb
+      - if: startsWith(github.ref, 'refs/tags/')
+        run: gh release create "$GITHUB_REF_NAME" grub-btrfs_*.deb --generate-notes
+        env:
+          GH_TOKEN: ${{ github.token }}

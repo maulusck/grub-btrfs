@@ -1,0 +1,20 @@
+Source: grub-btrfs
+Section: admin
+Priority: optional
+Maintainer: maulusck <maulusck@users.noreply.github.com>
+Build-Depends: debhelper-compat (= 13)
+Rules-Requires-Root: binary-targets
+Standards-Version: 4.7.2
+Homepage: https://github.com/Antynea/grub-btrfs
+
+Package: grub-btrfs
+Architecture: all
+Depends: btrfs-progs, grub2-common, inotify-tools, snapper, ${misc:Depends}
+Description: boot btrfs snapshots from the GRUB menu, wired to snapper
+ Adds a GRUB submenu listing btrfs snapshots; the grub-btrfsd daemon
+ regenerates it whenever a snapshot appears or disappears.
+ .
+ On a btrfs root this package creates the snapper "root" config, which
+ activates snapper's apt hook: every apt transaction gets a pre/post
+ snapshot that shows up as a bootable entry. grub-btrfs-restore(8) makes
+ a snapshot the permanent root again.

@@ -1,0 +1,6 @@
+grub-btrfs/
+.debhelper/
+debhelper-build-stamp
+files
+*.substvars
+*.debhelper
