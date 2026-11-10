@@ -1,0 +1,36 @@
+name: deb
+on:
+  push:
+    branches: [master]
+  pull_request:
+permissions:
+  contents: write
+jobs:
+  deb:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends build-essential debhelper fakeroot lintian btrfs-progs
+      - run: sudo debian/tests/restore
+      - run: dpkg-buildpackage -b -us -uc && mv ../grub-btrfs_*.deb grub-btrfs.deb
+      - run: lintian --fail-on error grub-btrfs.deb && dpkg-deb -f grub-btrfs.deb Version | grep git2  # version must come from git
+      - name: install, upgrade and purge on trixie
+        run: >
+          docker run --rm -v "$PWD:/w" debian:trixie sh -ec
+          'apt-get update -qq; apt-get install -y /w/grub-btrfs.deb;
+          apt-get install -y --reinstall /w/grub-btrfs.deb;
+          ls /usr/share/man/man8/grub-btrfs.8.gz /usr/share/man/man8/grub-btrfsd.8.gz /usr/share/man/man8/grub-btrfs-restore.8.gz;
+          apt-get purge -y grub-btrfs'
+      # Every push to master replaces the single rolling "deb" release, so the
+      # download URL never changes and nobody has to tag or edit anything.
+      - if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete deb --cleanup-tag --yes || true
+          gh release create deb grub-btrfs.deb --target "$GITHUB_SHA" \
+            --title "grub-btrfs $(dpkg-deb -f grub-btrfs.deb Version)" \
+            --notes "Install or upgrade on Debian:
+
+              curl -LO $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/download/deb/grub-btrfs.deb
+              sudo apt install ./grub-btrfs.deb"

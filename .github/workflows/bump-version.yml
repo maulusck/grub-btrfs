@@ -12,6 +12,8 @@ jobs:
   bump-version:
     name: Bump version in config
     runs-on: ubuntu-latest
+    # Forks keep upstream's version line, so syncing never conflicts.
+    if: github.repository == 'Antynea/grub-btrfs'
     steps:
       - name: Checkout
         uses: actions/checkout@v4

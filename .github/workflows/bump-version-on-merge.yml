@@ -12,7 +12,8 @@ jobs:
   bump-version:
     name: Bump version in config
     runs-on: ubuntu-latest
-    if: github.actor != 'github-actions[bot]'
+    # Forks keep upstream's version line, so syncing never conflicts.
+    if: github.actor != 'github-actions[bot]' && github.repository == 'Antynea/grub-btrfs'
     steps:
       - name: Checkout
         uses: actions/checkout@v4

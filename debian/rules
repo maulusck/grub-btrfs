@@ -1,0 +1,19 @@
+#!/usr/bin/make -f
+%:
+	dh $@
+
+# ponytail: the upstream Makefile is the installer (scripts, unit, manpages,
+# docs). Its default target is "install" and "clean" deletes tracked files,
+# so build and clean must be no-ops.
+override_dh_auto_build override_dh_auto_clean:
+
+override_dh_auto_install:
+	dh_auto_install -- GRUB_UPDATE_EXCLUDE=true
+	rm -r debian/grub-btrfs/usr/share/licenses
+
+# ponytail: the package version is the date of the HEAD commit, so a release
+# never needs a changelog edit. Outside git the changelog version is used.
+# The 0~ prefix sorts below any real release, so an official package wins.
+GITVER := $(shell TZ=UTC git log -1 --format=%cd --date=format-local:0~git%Y%m%d.%H%M%S 2>/dev/null)
+override_dh_gencontrol:
+	dh_gencontrol $(if $(GITVER),-- -v$(GITVER)-1)

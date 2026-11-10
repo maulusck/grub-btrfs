@@ -1,0 +1,103 @@
+.Dd November 10, 2026
+.Dt GRUB-BTRFS-RESTORE 8
+.Os
+.Sh NAME
+.Nm grub-btrfs-restore
+.Nd make a snapper snapshot the root filesystem again \" codespell:ignore
+.Sh SYNOPSIS
+.Nm
+.Ar number
+.Sh DESCRIPTION
+.Nm
+replaces the root subvolume with a writable copy of snapper snapshot
+.Ar number .
+It works from the running system and from a snapshot booted through the
+.Dq Debian snapshots
+GRUB submenu.
+Nothing is deleted: the previous root is renamed to
+.Pa <subvol>.old-<date>
+and all snapshots are carried over.
+The change takes effect at the next boot.
+.Pp
+The root subvolume is the one named by the
+.Cm subvol=
+option for
+.Pa /
+in
+.Xr fstab 5 ,
+.Pa @rootfs
+on a default Debian install.
+Other subvolumes such as
+.Pa @home
+are never touched.
+.Sh HOW THE PACKAGE IS WIRED
+.Bl -bullet
+.It
+On installation, if
+.Pa /
+is btrfs and no snapper config named
+.Dq root
+exists, one is created with timeline snapshots off and at most 10
+numbered snapshots.
+An existing config is never modified; tune it with
+.Xr snapper 8 .
+.It
+That config arms snapper's own apt hook
+.Pa /etc/apt/apt.conf.d/80snapper :
+every apt transaction is wrapped in a pre/post snapshot pair.
+Skip one with
+.Dl DISABLE_APT_SNAPSHOT=yes apt install ...
+.It
+.Xr grub-btrfsd 8
+watches
+.Pa /.snapshots
+and regenerates the GRUB submenu described in
+.Xr grub-btrfs 8 .
+.It
+Removing or purging the package keeps the snapper config and every
+snapshot.
+.El
+.Sh EXAMPLES
+An upgrade broke the system.
+Pick the
+.Dq pre
+snapshot of that transaction, restore it, reboot:
+.Bd -literal -offset indent
+snapper list
+grub-btrfs-restore 42
+reboot
+.Ed
+.Pp
+If the system no longer boots, choose the snapshot in the GRUB submenu
+first and run the same commands there.
+.Pp
+Once satisfied, delete the previous root.
+Its name is printed by
+.Nm :
+.Bd -literal -offset indent
+mount -o subvolid=5 "$(findmnt -nvo SOURCE /)" /mnt
+btrfs subvolume delete /mnt/@rootfs.old-20261110-120000
+umount /mnt
+.Ed
+.Sh SEE ALSO
+.Xr btrfs-subvolume 8 ,
+.Xr grub-btrfs 8 ,
+.Xr grub-btrfsd 8 ,
+.Xr snapper 8
+.Sh CAVEATS
+Kernels on a separate
+.Pa /boot
+partition are not part of any snapshot.
+A snapshot taken before a kernel was purged has no matching
+.Pa /lib/modules
+and will not boot; after restoring across a kernel upgrade run
+.Dl apt install --reinstall linux-image-amd64
+so that
+.Pa /boot
+and the package database agree again.
+.Pp
+Only the layout made by
+.Dq snapper create-config /
+is supported, with
+.Pa /.snapshots
+nested in the root subvolume.

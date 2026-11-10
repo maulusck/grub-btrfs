@@ -1,0 +1,12 @@
+#!/bin/sh
+set -e
+
+#DEBHELPER#
+
+# Snapper config and snapshots are deliberately kept: they are your backups.
+if [ "$1" = purge ]; then
+    rm -f /boot/grub/grub-btrfs.cfg
+fi
+if { [ "$1" = remove ] || [ "$1" = purge ]; } && [ -e /boot/grub/grub.cfg ] && command -v update-grub >/dev/null; then
+    update-grub || true
+fi

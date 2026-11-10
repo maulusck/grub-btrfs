@@ -1,0 +1,37 @@
+#!/bin/sh
+# grub-btrfs-restore - make a snapper snapshot the root subvolume.
+# Documentation: grub-btrfs-restore(8)
+set -eu
+
+die() { echo "grub-btrfs-restore: $*" >&2; exit 1; }
+
+[ $# = 1 ] && [ "$1" -gt 0 ] 2>/dev/null || die "usage: grub-btrfs-restore SNAPSHOT_NUMBER"
+[ "$(id -u)" = 0 ] || die "must be run as root"
+n=$1
+
+dev=$(findmnt -nvo SOURCE /)
+# fstab names the subvolume the next boot mounts; it gives the same answer
+# from the live system and from a snapshot booted via the GRUB menu.
+sub=$(findmnt -sno OPTIONS / | tr , '\n' | sed -n 's|^subvol=/*||p')
+[ -n "$sub" ] || die "/etc/fstab has no subvol= option for /"
+
+top=$(mktemp -d)
+trap 'umount "$top" 2>/dev/null; rmdir "$top"' EXIT
+mount -o subvolid=5 "$dev" "$top"
+
+# ponytail: nested layout only (/.snapshots inside the root subvolume, what
+# "snapper create-config /" makes). Support a separate @snapshots subvolume
+# here if someone actually runs that layout.
+[ -d "$top/$sub/.snapshots/$n/snapshot" ] || die "no snapshot $n in $sub/.snapshots"
+[ ! -e "$top/$sub.new" ] || die "$sub.new exists (interrupted run?), delete it first"
+
+old=$sub.old-$(date +%Y%m%d-%H%M%S)
+# Everything that can fail happens before the current root is touched.
+btrfs subvolume snapshot "$top/$sub/.snapshots/$n/snapshot" "$top/$sub.new" >/dev/null
+rmdir "$top/$sub.new/.snapshots"
+mv "$top/$sub" "$top/$old"
+mv "$top/$sub.new" "$top/$sub"
+mv "$top/$old/.snapshots" "$top/$sub/.snapshots"
+
+echo "Snapshot $n is now $sub. Reboot to use it."
+echo "The previous root is kept as $old; see grub-btrfs-restore(8) to delete it."
