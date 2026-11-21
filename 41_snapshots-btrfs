@@ -668,6 +668,9 @@ boot_separate()
 # write the same grub-btrfs.new. Locking this script's own file needs no lock file.
 # A run that hangs must not block apt forever: after 120s, continue unlocked.
 exec 9<"$0" && flock -w 120 9 || :
+# The lock fd is inherited by child processes on purpose; LVM tools (run by
+# grub-probe) would warn about it on every call.
+export LVM_SUPPRESS_FD_WARNINGS=1
 rm -f "$grub_btrfs_directory/grub-btrfs.new"
 true > "$grub_btrfs_directory/grub-btrfs.new" # Create a "grub-btrfs.new" file in "grub_btrfs_directory"
 # Create a backup of the "$grub_btrfs_directory/grub-btrfs.cfg" file if exist
