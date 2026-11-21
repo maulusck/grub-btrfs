@@ -663,6 +663,11 @@ boot_separate()
     IFS=$oldIFS
 }
 
+# Serialize runs: grub-btrfsd and update-grub (e.g. an apt snapshot followed by a
+# kernel install/removal) can start this script at the same moment, and both
+# write the same grub-btrfs.new. Locking this script's own file needs no lock file.
+# A run that hangs must not block apt forever: after 120s, continue unlocked.
+exec 9<"$0" && flock -w 120 9 || :
 rm -f "$grub_btrfs_directory/grub-btrfs.new"
 true > "$grub_btrfs_directory/grub-btrfs.new" # Create a "grub-btrfs.new" file in "grub_btrfs_directory"
 # Create a backup of the "$grub_btrfs_directory/grub-btrfs.cfg" file if exist
